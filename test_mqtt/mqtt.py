@@ -8,30 +8,25 @@ import uvicorn
 
 app = FastAPI()
 
-# Настройки MQTT
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_TOPIC = "microscope/image"
 
-# Папка для сохранения изображений
+
 IMAGE_FOLDER = "images"
-os.makedirs(IMAGE_FOLDER, exist_ok=True)  # Создаем папку, если она не существует
+os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
-
-# Функция обработки сообщений MQTT
 def on_message(client, userdata, msg):
     print("Image from MQTT")
     image_data = base64.b64decode(msg.payload)
     image_np = np.frombuffer(image_data, dtype=np.uint8)
     image = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
 
-    # Сохраняем изображение в папку
     image_path = os.path.join(IMAGE_FOLDER, "received_image_mqtt.jpg")
     cv2.imwrite(image_path, image)
     print(f"Image saved to {image_path}")
 
 
-# Настройка клиента MQTT
 mqtt_client = mqtt.Client("ImageReceiver")
 mqtt_client.on_message = on_message
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
@@ -50,7 +45,6 @@ async def upload_image(file: UploadFile = File(...)):
     np_img = np.frombuffer(image, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
-    # Сохраняем изображение в папку
     image_path = os.path.join(IMAGE_FOLDER, "received_http_image.jpg")
     cv2.imwrite(image_path, img)
     print(f"Image saved to {image_path}")
