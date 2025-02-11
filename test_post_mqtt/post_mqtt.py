@@ -3,12 +3,11 @@ import base64
 import time
 import cv2
 
-MQTT_BROKER = "94.180.169.106"
-MQTT_PORT = 1883
+MQTT_BROKER = "your_ip"
+MQTT_PORT = 1884
 MQTT_TOPIC = "microscope/image"
 
 def image_to_base64(image_path):
-    # Читаем изображение
     image = cv2.imread(image_path)
     _, buffer = cv2.imencode('.jpg', image)
     image_data = base64.b64encode(buffer).decode('utf-8')
@@ -19,7 +18,6 @@ def send_image(client, image_path):
     client.publish(MQTT_TOPIC, base64_image)
     print("Image sent to MQTT broker")
 
-# Настройка MQTT клиента
 def on_connect(client, userdata, flags, rc):
     print(f"Connected with result code {rc}")
 
