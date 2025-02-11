@@ -3,3 +3,4 @@ uvicorn
 opencv-python
 numpy
 paho-mqtt
+Pillow
