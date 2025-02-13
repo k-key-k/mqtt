@@ -1,40 +1,26 @@
+from mqtt.mqtt_client import create_mqtt_client
+from mqtt.config import MQTT_TOPIC
 import paho.mqtt.client as mqtt
 import base64
-import time
-import cv2
 
-MQTT_BROKER = "your_ip"
-MQTT_PORT = "your_port"
-MQTT_TOPIC = "microscope/image"
+IMAGE_PATH = "test.jpg"
 
-def image_to_base64(image_path):
-    image = cv2.imread(image_path)
-    _, buffer = cv2.imencode('.jpg', image)
-    image_data = base64.b64encode(buffer).decode('utf-8')
-    return image_data
+def send_image():
+    try:
+        with open(IMAGE_PATH, "rb") as img_file:
+            image_data = base64.b64encode(img_file.read()).decode()
 
-def send_image(client, image_path):
-    base64_image = image_to_base64(image_path)
-    client.publish(MQTT_TOPIC, base64_image)
-    print("Image sent to MQTT broker")
+        mqtt_client = create_mqtt_client("Client")
+        mqtt_client.loop_start()
+        mqtt_client.sleep(1)
 
-def on_connect(client, userdata, flags, rc):
-    print(f"Connected with result code {rc}")
+        mqtt_client.publish(MQTT_TOPIC, image_data)
+        print("Image sent via MQTT")
 
-client = mqtt.Client()
-client.on_connect = on_connect
-client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        mqtt_client.loop_stop()
+        mqtt_client.disconnect()
+    except Exception as e:
+        print(f"Error sending image: {e}")
 
-client.loop_start()
-
-try:
-    image_path = "test_image.jpg"  # Укажите путь к вашему изображению
-
-    while True:
-        send_image(client, image_path)
-        time.sleep(5)
-except KeyboardInterrupt:
-    print("Interrupted by user")
-finally:
-    client.loop_stop()
-    client.disconnect()
+if __name__ == "__main__":
+    send_image()
