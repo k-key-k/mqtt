@@ -15,7 +15,7 @@ HTML_FILE = os.path.join(BASE_DIR, "../upload_form.html")
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
 
 MQTT_BROKER = "localhost"
-MQTT_PORT = "your_port"
+MQTT_PORT = 1884
 MQTT_TOPIC = "microscope/image"
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
