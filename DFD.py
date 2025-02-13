@@ -1,3 +1,4 @@
+#DFD схема проекта
 from graphviz import Digraph
 
 dfd = Digraph('DFD', format='png')
