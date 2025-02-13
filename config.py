@@ -1,5 +1,5 @@
 MQTT_BROKER = "localhost"
-MQTT_PORT = 1884
+MQTT_PORT = "your_port"
 MQTT_TOPIC = "microscope/image"
-USERNAME = "aizat"
-PASSWORD = "aizat"
+USERNAME = "username"
+PASSWORD = "password"

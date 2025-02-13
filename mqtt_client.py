@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt
 from config import MQTT_TOPIC, MQTT_PORT, MQTT_BROKER, USERNAME, PASSWORD
 
+
 def create_mqtt_client(client_name):
     client = mqtt.Client(client_name)
     client.username_pw_set(USERNAME, PASSWORD)

@@ -4,6 +4,7 @@ import base64
 import numpy as np
 import cv2
 import os
+import json
 
 IMAGE_FOLDER = "server/images"
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
@@ -12,7 +13,10 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 def on_message(client, userdata, msg):
     print("Image received via MQTT")
 
-    image_data = base64.b64decode(msg.payload)
+    data = json.loads(msg.payload.decode("utf-8"))
+    username = data.get("username", "unknown_user")
+    image_data = base64.b64decode(data["image"])
+
     image_np = np.frombuffer(image_data, dtype=np.uint8)
     image = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
 
