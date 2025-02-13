@@ -24,9 +24,9 @@ def on_message(client, userdata, msg):
         print("Error: Unable to decode image data")
         return
 
-    image_path = os.path.join(IMAGE_FOLDER, "received_mqtt_image.jpg")
+    image_path = os.path.join(IMAGE_FOLDER, f"{username}_received.jpg")
     cv2.imwrite(image_path, image)
-    print(f"Image saved to {image_path}")
+    print(f"Image saved to {image_path} from {username}")
 
 
 mqtt_client = create_mqtt_client("Server")
