@@ -63,13 +63,14 @@
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
+            const ip = 'http://0.0.0.0:8000/upload/'
             const formData = new FormData();
             const file = fileInput.files[0];
 
             if (file) {
                 formData.append('file', file);
 
-                fetch('http://0.0.0.0:8000/upload/', {
+                fetch(ip, {
                     method: 'POST',
                     body: formData
                 })

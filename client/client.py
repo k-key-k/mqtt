@@ -4,7 +4,7 @@ import time
 import cv2
 
 MQTT_BROKER = "your_ip"
-MQTT_PORT = 1884
+MQTT_PORT = "your_port"
 MQTT_TOPIC = "microscope/image"
 
 def image_to_base64(image_path):
