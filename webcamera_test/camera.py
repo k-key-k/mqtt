@@ -1,7 +1,7 @@
 import cv2
 import os
 
-os.makedirs('camera_images', exist_ok=True)
+os.makedirs('webcamera_test/camera_images', exist_ok=True)
 
 capture = cv2.VideoCapture(0)
 
