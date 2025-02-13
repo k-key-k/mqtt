@@ -1,11 +1,11 @@
-from mqtt.mqtt_client import create_mqtt_client
-from mqtt.config import MQTT_TOPIC
+from mqtt_client import create_mqtt_client
+from config import MQTT_TOPIC
 import base64
 import numpy as np
 import cv2
 import os
 
-IMAGE_FOLDER = "images"
+IMAGE_FOLDER = "server/images"
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
 

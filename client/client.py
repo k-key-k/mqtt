@@ -1,9 +1,9 @@
-from mqtt.mqtt_client import create_mqtt_client
-from mqtt.config import MQTT_TOPIC
+from mqtt_client import create_mqtt_client
+from config import MQTT_TOPIC
 import paho.mqtt.client as mqtt
 import base64
 
-IMAGE_PATH = "test.jpg"
+IMAGE_PATH = "client/test.jpg"
 
 def send_image():
     try:
@@ -12,7 +12,7 @@ def send_image():
 
         mqtt_client = create_mqtt_client("Client")
         mqtt_client.loop_start()
-        mqtt_client.sleep(1)
+        # mqtt_client.sleep(1)
 
         mqtt_client.publish(MQTT_TOPIC, image_data)
         print("Image sent via MQTT")
