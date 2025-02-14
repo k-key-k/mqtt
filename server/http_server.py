@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
+from config import MQTT_BROKER
 import uvicorn
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +18,9 @@ app = FastAPI()
 @app.get("/", response_class=FileResponse)
 async def get_upload_form():
     return FileResponse(HTML_FILE)
-
+@app.get("/config/")
+async def get_config():
+    return {"server_ip": MQTT_BROKER}
 
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
