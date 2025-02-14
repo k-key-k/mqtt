@@ -5,3 +5,4 @@ numpy
 paho-mqtt==1.6.1
 Pillow
 python-multipart
+setuptools
