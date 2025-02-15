@@ -4,13 +4,16 @@ import numpy as np
 import base64
 import json
 import paho.mqtt.client as mqtt
+import uuid
+from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
-HTML_FILE = os.path.join(BASE_DIR, "../upload_form.html")
+HTML_FILE = os.path.join(BASE_DIR, "upload_form.html")
+GALLERY_HTML = os.path.join(BASE_DIR, "gallery.html")
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
@@ -32,9 +35,29 @@ async def get_config():
     return {"server_ip": MQTT_BROKER}
 
 
-def compress_image(image, quality=60):
-    _, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
-    return buffer.tobytes()
+@app.get("/images/")
+async def get_images():
+    images = []
+    for filename in os.listdir(IMAGE_FOLDER):
+        if filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            images.append({
+                "filename": filename,
+                "url": f"/images/{filename}"
+            })
+    return {"images": images}
+
+
+@app.get("/images/{filename}")
+async def get_image(filename: str):
+    image_path = os.path.join(IMAGE_FOLDER, filename)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(image_path)
+
+
+@app.get("/gallery/", response_class=FileResponse)
+async def get_gallery():
+    return FileResponse(GALLERY_HTML)
 
 
 @app.post("/upload/")
@@ -52,7 +75,7 @@ async def upload_image(file: UploadFile = File(...)):
     compressed_image = compress_image(img, quality=60)
     img = cv2.imdecode(np.frombuffer(compressed_image, np.uint8), cv2.IMREAD_COLOR)
 
-    filename = f"received_{file.filename}" if file.filename else "received_http_image.jpg"
+    filename = generate_unique_filename(file.filename)
     image_path = os.path.join(IMAGE_FOLDER, filename)
     cv2.imwrite(image_path, img)
 
@@ -72,6 +95,17 @@ async def upload_image(file: UploadFile = File(...)):
         print(f"Error publishing to MQTT: {e}")
         return {"error": "Failed to publish image to MQTT"}
 
+
+def compress_image(image, quality=60):
+    _, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    return buffer.tobytes()
+def generate_unique_filename(original_filename=None):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:6]
+    if original_filename:
+        name, ext = os.path.splitext(original_filename)
+        return f"{name}_{timestamp}_{unique_id}{ext}"
+    return f"image_{timestamp}_{unique_id}.jpg"
 
 if __name__ == "__main__":
     import uvicorn
