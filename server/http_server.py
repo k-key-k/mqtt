@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
 HTML_FILE = os.path.join(BASE_DIR, "upload_form.html")
 GALLERY_HTML = os.path.join(BASE_DIR, "gallery.html")
-PASSWORD_FILE = os.path.join(BASE_DIR, "../password.txt")
+PASSWORD_FILE = os.path.join(BASE_DIR, "../passwords.txt")
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
@@ -79,6 +79,8 @@ async def get_gallery():
 class RegisterRequest(BaseModel):
     username: str
     password: str
+
+
 @app.post("/register/")
 async def register_client(request: RegisterRequest):
     username = request.username
