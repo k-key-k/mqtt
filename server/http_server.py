@@ -5,15 +5,18 @@ import base64
 import json
 import paho.mqtt.client as mqtt
 import uuid
+import subprocess
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD
+from pydantic import BaseModel
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
 HTML_FILE = os.path.join(BASE_DIR, "upload_form.html")
 GALLERY_HTML = os.path.join(BASE_DIR, "gallery.html")
+PASSWORD_FILE = os.path.join(BASE_DIR, "../password.txt")
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
@@ -55,9 +58,50 @@ async def get_image(filename: str):
     return FileResponse(image_path)
 
 
+@app.delete("/images/{filename}")
+async def delete_image(filename: str):
+    image_path = os.path.join(IMAGE_FOLDER, filename)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    try:
+        os.remove(image_path)
+        return {"message": f"Image {filename} deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting image: {e}")
+
+
 @app.get("/gallery/", response_class=FileResponse)
 async def get_gallery():
     return FileResponse(GALLERY_HTML)
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+@app.post("/register/")
+async def register_client(request: RegisterRequest):
+    username = request.username
+    password = request.password
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+
+    if not os.path.exists(PASSWORD_FILE):
+        open(PASSWORD_FILE, "w").close()
+
+    try:
+        subprocess.run(
+            ["mosquitto_passwd", "-b", PASSWORD_FILE, username, password],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return {"message": "Client registered successfully"}
+    except subprocess.CalledProcessError as e:
+        if "already exists" in e.stderr.decode():
+            raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=500, detail="Failed to register client")
 
 
 @app.post("/upload/")
@@ -99,6 +143,8 @@ async def upload_image(file: UploadFile = File(...)):
 def compress_image(image, quality=60):
     _, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
     return buffer.tobytes()
+
+
 def generate_unique_filename(original_filename=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = uuid.uuid4().hex[:6]
@@ -106,6 +152,7 @@ def generate_unique_filename(original_filename=None):
         name, ext = os.path.splitext(original_filename)
         return f"{name}_{timestamp}_{unique_id}{ext}"
     return f"image_{timestamp}_{unique_id}.jpg"
+
 
 if __name__ == "__main__":
     import uvicorn
