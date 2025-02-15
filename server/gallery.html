@@ -18,16 +18,40 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-        .gallery img {
-            max-width: 200px;
-            height: auto;
+        .gallery-item {
+            position: relative;
             border: 1px solid #ccc;
             border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .gallery-item img {
+            max-width: 200px;
+            height: auto;
             cursor: pointer;
             transition: transform 0.2s;
         }
-        .gallery img:hover {
+        .gallery-item img:hover {
             transform: scale(1.05);
+        }
+        .delete-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-button:hover {
+            background-color: #cc0000;
         }
         .modal {
             display: none;
@@ -56,47 +80,82 @@
     </style>
 </head>
 <body>
-    <h1>Image Gallery</h1>
-    <div class="gallery" id="gallery"></div>
+<h1>Image Gallery</h1>
+<div class="gallery" id="gallery"></div>
 
-    <div class="modal" id="modal">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <img id="modalImage" src="#" alt="Modal Image">
-    </div>
+<div class="modal" id="modal">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <img id="modalImage" src="#" alt="Modal Image">
+</div>
 
-    <script>
+<script>
+    function loadGallery() {
         fetch("/images/")
             .then(response => response.json())
             .then(data => {
                 const gallery = document.getElementById('gallery');
+                gallery.innerHTML = '';
                 data.images.forEach(image => {
+                    const galleryItem = document.createElement('div');
+                    galleryItem.className = 'gallery-item';
+
                     const img = document.createElement('img');
                     img.src = image.url;
                     img.alt = image.filename;
                     img.onclick = () => openModal(image.url);
-                    gallery.appendChild(img);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete-button';
+                    deleteButton.textContent = '×';
+                    deleteButton.onclick = (event) => {
+                        event.stopPropagation();
+                        deleteImage(image.filename);
+                    };
+
+                    galleryItem.appendChild(img);
+                    galleryItem.appendChild(deleteButton);
+                    gallery.appendChild(galleryItem);
                 });
             })
             .catch(error => console.error("Error fetching images:", error));
+    }
 
-        const modal = document.getElementById('modal');
-        const modalImage = document.getElementById('modalImage');
-
-        function openModal(imageUrl) {
-            modalImage.src = imageUrl;
-            modal.style.display = 'flex';
+    function deleteImage(filename) {
+        if (confirm("Are you sure you want to delete this image?")) {
+            fetch(`/images/${filename}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert("Image deleted successfully");
+                    loadGallery();
+                } else {
+                    alert("Error deleting image");
+                }
+            })
+            .catch(error => console.error("Error deleting image:", error));
         }
+    }
 
-        function closeModal() {
-            modal.style.display = 'none';
+    const modal = document.getElementById('modal');
+    const modalImage = document.getElementById('modalImage');
+
+    function openModal(imageUrl) {
+        modalImage.src = imageUrl;
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    window.onclick = function (event) {
+        if (event.target === modal) {
+            closeModal();
         }
+    };
 
-
-        window.onclick = function (event) {
-            if (event.target === modal) {
-                closeModal();
-            }
-        };
-    </script>
+    loadGallery();
+</script>
 </body>
 </html>
