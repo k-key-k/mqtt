@@ -66,9 +66,9 @@ def camera_sent_image():
 
 if __name__ == "__main__":
     mode = input("Choose sent method (1 - file, 2 - cam): ").strip()
-    if mode == 1:
+    if mode == "1":
         send_image()
-    elif mode == 2:
+    elif mode == "2":
         camera_sent_image()
     else:
         print("Incorrect input. Exit.")
