@@ -1,10 +1,12 @@
 import os
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File
+import base64
+import json
+import paho.mqtt.client as mqtt
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
-from config import MQTT_BROKER
-import uvicorn
+from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
@@ -14,27 +16,56 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
 app = FastAPI()
 
+mqtt_client = mqtt.Client("HTTP_Server")
+mqtt_client.username_pw_set(USERNAME, PASSWORD)
+mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+mqtt_client.loop_start()
+
 
 @app.get("/", response_class=FileResponse)
 async def get_upload_form():
     return FileResponse(HTML_FILE)
+
+
 @app.get("/config/")
 async def get_config():
     return {"server_ip": MQTT_BROKER}
 
+
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Only JPEG/PNG images are allowed")
+
     image = await file.read()
     np_img = np.frombuffer(image, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
+    if img is None:
+        return {"error": "Invalid image format"}
+
     filename = f"received_{file.filename}" if file.filename else "received_http_image.jpg"
     image_path = os.path.join(IMAGE_FOLDER, filename)
-
     cv2.imwrite(image_path, img)
+
     print(f"Image saved to {image_path}")
-    return {"message": "Image received", "filename": filename}
+
+    try:
+        with open(image_path, "rb") as img_file:
+            image_data = base64.b64encode(img_file.read()).decode()
+
+        payload = json.dumps({"username": USERNAME, "image": image_data})
+        mqtt_client.publish(MQTT_TOPIC, payload)
+
+        print(f"Image published to MQTT topic {MQTT_TOPIC}")
+        return {"message": "Image received and published to MQTT", "filename": filename}
+
+    except Exception as e:
+        print(f"Error publishing to MQTT: {e}")
+        return {"error": "Failed to publish image to MQTT"}
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
