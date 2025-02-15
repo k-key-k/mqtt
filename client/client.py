@@ -11,6 +11,11 @@ IMAGE_PATH = "client/test.jpg"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
+def compress_image(image, quality=60):
+    _, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    return buffer.tobytes()
+
+
 def send_image_mqtt(image_data):
     try:
         mqtt_client = create_mqtt_client("Client")
@@ -35,9 +40,14 @@ def send_image_mqtt(image_data):
 def send_image():
     try:
         with open(IMAGE_PATH, "rb") as img_file:
-            image_data = base64.b64encode(img_file.read()).decode()
+            image = cv2.imread(IMAGE_PATH)
+            if image is None:
+                print("Error: Unable to read image file")
+                return
 
-        send_image_mqtt(image_data)
+            compressed_image = compress_image(image, quality=60)
+            image_data = base64.b64encode(compressed_image).decode()
+            send_image_mqtt(image_data)
     except Exception as e:
         print(f"Error reading image file: {e}")
 
@@ -53,9 +63,8 @@ def camera_sent_image():
         print("No access to camera")
         return
 
-    _, buffer = cv2.imencode(".jpg", frame)
-    image_data = base64.b64encode(buffer).decode()
-
+    compressed_image = compress_image(frame, quality=85)
+    image_data = base64.b64encode(compressed_image).decode()
     send_image_mqtt(image_data)
 
 

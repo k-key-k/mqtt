@@ -32,6 +32,11 @@ async def get_config():
     return {"server_ip": MQTT_BROKER}
 
 
+def compress_image(image, quality=60):
+    _, buffer = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    return buffer.tobytes()
+
+
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...)):
     if file.content_type not in ["image/jpeg", "image/png"]:
@@ -43,6 +48,9 @@ async def upload_image(file: UploadFile = File(...)):
 
     if img is None:
         return {"error": "Invalid image format"}
+
+    compressed_image = compress_image(img, quality=60)
+    img = cv2.imdecode(np.frombuffer(compressed_image, np.uint8), cv2.IMREAD_COLOR)
 
     filename = f"received_{file.filename}" if file.filename else "received_http_image.jpg"
     image_path = os.path.join(IMAGE_FOLDER, filename)
