@@ -5,15 +5,14 @@ import base64
 import time
 import json
 import cv2
+import logging
 
 IMAGE_PATH = "client/test.jpg"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def send_image():
+def send_image_mqtt(image_data):
     try:
-        with open(IMAGE_PATH, "rb") as img_file:
-            image_data = base64.b64encode(img_file.read()).decode()
-
         mqtt_client = create_mqtt_client("Client")
         mqtt_client.loop_start()
         time.sleep(1)
@@ -24,12 +23,24 @@ def send_image():
         })
 
         mqtt_client.publish(MQTT_TOPIC, payload)
-        print(f"Image sent via MQTT from {USERNAME}")
+        logging.info(f"Image sent via MQTT from {USERNAME}")
 
         mqtt_client.loop_stop()
         mqtt_client.disconnect()
+
     except Exception as e:
-        print(f"Error sending image: {e}")
+        logging.info(f"Error sending image: {e}")
+
+
+def send_image():
+    try:
+        with open(IMAGE_PATH, "rb") as img_file:
+            image_data = base64.b64encode(img_file.read()).decode()
+
+        send_image_mqtt(image_data)
+    except Exception as e:
+        print(f"Error reading image file: {e}")
+
 
 def camera_sent_image():
     capture = cv2.VideoCapture(0)
@@ -45,23 +56,7 @@ def camera_sent_image():
     _, buffer = cv2.imencode(".jpg", frame)
     image_data = base64.b64encode(buffer).decode()
 
-    try:
-        mqtt_client = create_mqtt_client("Client")
-        mqtt_client.loop_start()
-        time.sleep(1)
-
-        payload = json.dumps({
-            "username": USERNAME,
-            "image": image_data
-        })
-
-        mqtt_client.publish(MQTT_TOPIC, payload)
-        print(f"Image sent via MQTT from {USERNAME}")
-
-        mqtt_client.loop_stop()
-        mqtt_client.disconnect()
-    except Exception as e:
-        print(f"Error sending image: {e}")
+    send_image_mqtt(image_data)
 
 
 if __name__ == "__main__":
