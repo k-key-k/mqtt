@@ -24,11 +24,33 @@
         #response.error {
             color: red;
         }
+        .form-container {
+            margin-bottom: 20px;
+        }
+        .form-container h2 {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>Upload Image</h1>
-    <form id="uploadForm" enctype="multipart/form-data">
+    <div class="form-container">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="text" id="loginUsername" placeholder="Username" required>
+            <input type="password" id="loginPassword" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <div class="form-container">
+        <h2>Register</h2>
+        <form id="registerForm">
+            <input type="text" id="registerUsername" placeholder="Username" required>
+            <input type="password" id="registerPassword" placeholder="Password" required>
+            <button type="submit">Register</button>
+        </form>
+    </div>
+    <form id="uploadForm" enctype="multipart/form-data" style="display:none;">
         <input type="file" name="file" id="fileInput" accept="image/*" required>
         <button type="submit">Upload</button>
     </form>
@@ -41,19 +63,12 @@
     <div id="response"></div>
     <div class="button-container">
         <a href="/gallery/">Go to Gallery</a>
-        <button onclick="openRegisterForm()">Register</button>
-    </div>
-    <div id="registerForm" style="display: none;">
-        <h2>Register New Client</h2>
-        <form id="registerClientForm">
-            <input type="text" id="username" placeholder="Username" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <button type="submit">Register</button>
-        </form>
     </div>
 
     <script>
+        let token = '';
         let ip = '';
+
         fetch("/config/")
             .then(response => response.json())
             .then(data => {
@@ -62,66 +77,42 @@
             })
             .catch(error => console.error("Error fetching config:", error));
 
-        const fileInput = document.getElementById('fileInput');
-        const preview = document.getElementById('preview');
-        const responseDiv = document.getElementById('response');
-        const form = document.getElementById('uploadForm');
+        document.getElementById('loginForm').addEventListener('submit', function (event) {
+            event.preventDefault();
 
-        fileInput.addEventListener('change', function () {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch("/token", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `username=${username}&password=${password}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Login failed');
                 }
-                reader.readAsDataURL(file);
-            } else {
-                preview.style.display = 'none';
-            }
+                return response.json();
+            })
+            .then(data => {
+                token = data.access_token;
+                document.getElementById('uploadForm').style.display = 'block';
+                alert('Login successful');
+            })
+            .catch(error => {
+                alert('Login failed: ' + error.message);
+            });
         });
 
-        form.addEventListener('submit', function (event) {
+        document.getElementById('registerForm').addEventListener('submit', function (event) {
             event.preventDefault();
 
-            const formData = new FormData();
-            const file = fileInput.files[0];
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
 
-            if (file) {
-                formData.append('file', file);
-
-                fetch(ip, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    responseDiv.textContent = `${data.message}, Filename: ${data.filename}`;
-                    responseDiv.className = 'success';
-                })
-                .catch(error => {
-                    responseDiv.textContent = 'Error uploading image.';
-                    responseDiv.className = 'error';
-                    console.error('Error:', error);
-                });
-            }
-        });
-        function openRegisterForm() {
-            document.getElementById('registerForm').style.display = 'block';
-        }
-
-        document.getElementById('registerClientForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            fetch('/register/', {
+            fetch("/register/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -135,12 +126,59 @@
                 return response.json();
             })
             .then(data => {
-                alert(data.message);
-                document.getElementById('registerForm').style.display = 'none';
+                alert('Registration successful');
             })
             .catch(error => {
-                alert(error.message);
+                alert('Registration failed: ' + error.message);
             });
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            const file = document.getElementById('fileInput').files[0];
+
+            if (file) {
+                formData.append('file', file);
+
+                fetch(ip, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('response').textContent = `${data.message}, Filename: ${data.filename}`;
+                    document.getElementById('response').className = 'success';
+                })
+                .catch(error => {
+                    document.getElementById('response').textContent = 'Error uploading image.';
+                    document.getElementById('response').className = 'error';
+                    console.error('Error:', error);
+                });
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('preview').src = e.target.result;
+                    document.getElementById('preview').style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('preview').style.display = 'none';
+            }
         });
     </script>
 </body>
