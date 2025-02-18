@@ -9,3 +9,4 @@ setuptools
 bcrypt
 python-jose[cryptography]
 passlib
+gunicorn
