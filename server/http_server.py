@@ -49,10 +49,10 @@ class TokenData(BaseModel):
 
 app = FastAPI()
 
-mqtt_client = mqtt.Client("HTTP_Server")
-mqtt_client.username_pw_set(USERNAME, PASSWORD)
-mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
-mqtt_client.loop_start()
+# mqtt_client = mqtt.Client("HTTP_Server")
+# mqtt_client.username_pw_set(USERNAME, PASSWORD)
+# mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+# mqtt_client.loop_start()
 
 
 def compress_image(image, quality=60):
