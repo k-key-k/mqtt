@@ -3,17 +3,16 @@ import cv2
 import numpy as np
 import base64
 import json
-import paho.mqtt.client as mqtt
-import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD, SECRET_KEY, ALGORITHM
+from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD, SECRET_KEY, ALGORITHM, IPS
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from typing import Optional
+import paho.mqtt.client as mqtt
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
@@ -49,10 +48,10 @@ class TokenData(BaseModel):
 
 app = FastAPI()
 
-# mqtt_client = mqtt.Client("HTTP_Server")
-# mqtt_client.username_pw_set(USERNAME, PASSWORD)
-# mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
-# mqtt_client.loop_start()
+mqtt_client = mqtt.Client("HTTP_Server")
+mqtt_client.username_pw_set(USERNAME, PASSWORD)
+mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+mqtt_client.loop_start()
 
 
 def compress_image(image, quality=60):
@@ -60,13 +59,10 @@ def compress_image(image, quality=60):
     return buffer.tobytes()
 
 
-def generate_unique_filename(original_filename=None):
+def generate_unique_filename(username, original_filename):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = uuid.uuid4().hex[:6]
-    if original_filename:
-        name, ext = os.path.splitext(original_filename)
-        return f"{name}_{timestamp}_{unique_id}{ext}"
-    return f"image_{timestamp}_{unique_id}.jpg"
+    name, ext = os.path.splitext(original_filename)
+    return f"{username}_{name}_{timestamp}{ext}"
 
 
 def load_users():
@@ -120,9 +116,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="token"))):
     credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=401,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
@@ -147,7 +143,7 @@ async def get_upload_form():
 
 @app.get("/config/")
 async def get_config():
-    return {"server_ip": MQTT_BROKER}
+    return {"server_ip": IPS}
 
 
 @app.post("/register/", response_model=User)
@@ -230,10 +226,7 @@ async def upload_image(
     if img is None:
         return {"error": "Invalid image format"}
 
-    compressed_image = compress_image(img, quality=60)
-    img = cv2.imdecode(np.frombuffer(compressed_image, np.uint8), cv2.IMREAD_COLOR)
-
-    filename = generate_unique_filename(file.filename)
+    filename = generate_unique_filename(current_user.username, file.filename)
     image_path = os.path.join(IMAGE_FOLDER, filename)
     cv2.imwrite(image_path, img)
 
@@ -243,7 +236,7 @@ async def upload_image(
         with open(image_path, "rb") as img_file:
             image_data = base64.b64encode(img_file.read()).decode()
 
-        payload = json.dumps({"username": current_user.username, "image": image_data})
+        payload = json.dumps({"username": current_user.username, "image": image_data, "filename": filename})
         mqtt_client.publish(MQTT_TOPIC, payload)
 
         print(f"Image published to MQTT topic {MQTT_TOPIC}")
