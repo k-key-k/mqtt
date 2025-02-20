@@ -1,13 +1,16 @@
 from paho.mqtt import client as mqtt
 from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD
+from mqtt_client import create_mqtt_client
 import base64
 import numpy as np
 import cv2
 import os
 import json
+import time
 
-IMAGE_FOLDER = "server/process_images"
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROCESSED_FOLDER = os.path.join(BASE_DIR, "images", "processed")
+os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
 
 def on_message(client, userdata, msg):
@@ -26,10 +29,11 @@ def on_message(client, userdata, msg):
         return
 
     # Обработка изображения (AI -> Fuzzifier -> Expert System -> Defuzzifier -> Aggregator)
-    processed_image = process_image(image)
+    time.sleep(5)
+    processed_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Сохранение обработанного изображения
-    processed_image_path = os.path.join(IMAGE_FOLDER, original_filename)
+    processed_image_path = os.path.join(PROCESSED_FOLDER, original_filename)
     cv2.imwrite(processed_image_path, processed_image)
     print(f"Processed image saved to {processed_image_path}")
 
@@ -42,13 +46,7 @@ def on_message(client, userdata, msg):
     print(f"Processed image published to MQTT topic 'processed/image'")
 
 
-def process_image(image):
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return gray_image
-
-
-# Создание MQTT-клиента
-mqtt_client = mqtt.Client("Server")
+mqtt_client = create_mqtt_client("MQTT_Server")
 mqtt_client.username_pw_set(USERNAME, PASSWORD)
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
 mqtt_client.on_message = on_message

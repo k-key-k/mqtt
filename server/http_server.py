@@ -7,20 +7,23 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD, SECRET_KEY, ALGORITHM, IPS
+from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, USERNAME, PASSWORD, SECRET_KEY, ALGORITHM, IPS, DOMAIN_NAME
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from typing import Optional
+from mqtt_client import create_mqtt_client
 import paho.mqtt.client as mqtt
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROCESSED_FOLDER = os.path.join(BASE_DIR, "images", "processed")
 IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
 HTML_FILE = os.path.join(BASE_DIR, "upload_form.html")
 GALLERY_HTML = os.path.join(BASE_DIR, "gallery.html")
 USERS_DB_FILE = os.path.join(BASE_DIR, "users.json")
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
+os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -48,7 +51,7 @@ class TokenData(BaseModel):
 
 app = FastAPI()
 
-mqtt_client = mqtt.Client("HTTP_Server")
+mqtt_client = create_mqtt_client("HTTP_Server")
 mqtt_client.username_pw_set(USERNAME, PASSWORD)
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
 mqtt_client.loop_start()
@@ -143,7 +146,7 @@ async def get_upload_form():
 
 @app.get("/config/")
 async def get_config():
-    return {"server_ip": IPS}
+    return {"server_ip": DOMAIN_NAME}
 
 
 @app.post("/register/", response_model=User)
@@ -190,6 +193,14 @@ async def get_image(filename: str):
     image_path = os.path.join(IMAGE_FOLDER, filename)
     if not os.path.exists(image_path):
         raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(image_path)
+
+
+@app.get("/processed_images/{filename}")
+async def get_processed_image(filename: str):
+    image_path = os.path.join(PROCESSED_FOLDER, filename)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Processed image not found")
     return FileResponse(image_path)
 
 
@@ -250,4 +261,10 @@ async def upload_image(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        ssl_keyfile="C:\\Users\\Admin\\certs\\privkey.pem",
+        ssl_certfile="C:\\Users\\Admin\\certs\\fullchain.pem"
+    )

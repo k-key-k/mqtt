@@ -1,185 +1,198 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Image</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 0;
-        }
-        img {
-            max-width: 300px;
-            margin-top: 10px;
-        }
-        #response {
-            margin-top: 15px;
-            font-weight: bold;
-        }
-        #response.success {
-            color: green;
-        }
-        #response.error {
-            color: red;
-        }
-        .form-container {
-            margin-bottom: 20px;
-        }
-        .form-container h2 {
-            margin-bottom: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Загрузка изображения</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+    }
+    img {
+      max-width: 300px;
+      margin-top: 10px;
+    }
+    #response {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    #response.success {
+      color: green;
+    }
+    #response.error {
+      color: red;
+    }
+    .form-container {
+      margin-bottom: 20px;
+    }
+    .form-container h2 {
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Upload Image</h1>
-    <div class="form-container">
-        <h2>Login</h2>
-        <form id="loginForm">
-            <input type="text" id="loginUsername" placeholder="Username" required>
-            <input type="password" id="loginPassword" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-    </div>
-    <div class="form-container">
-        <h2>Register</h2>
-        <form id="registerForm">
-            <input type="text" id="registerUsername" placeholder="Username" required>
-            <input type="password" id="registerPassword" placeholder="Password" required>
-            <button type="submit">Register</button>
-        </form>
-    </div>
-    <form id="uploadForm" enctype="multipart/form-data" style="display:none;">
-        <input type="file" name="file" id="fileInput" accept="image/*" required>
-        <button type="submit">Upload</button>
+  <h1>Загрузка изображения</h1>
+
+  <!-- Форма входа -->
+  <div class="form-container">
+    <h2>Вход</h2>
+    <form id="loginForm">
+      <input type="text" id="loginUsername" placeholder="Имя пользователя" required>
+      <input type="password" id="loginPassword" placeholder="Пароль" required>
+      <button type="submit">Войти</button>
     </form>
+  </div>
 
-    <div id="previewContainer">
-        <h3>Image Preview:</h3>
-        <img id="preview" src="#" alt="No image selected" style="display:none;">
-    </div>
+  <!-- Форма регистрации -->
+  <div class="form-container">
+    <h2>Регистрация</h2>
+    <form id="registerForm">
+      <input type="text" id="registerUsername" placeholder="Имя пользователя" required>
+      <input type="password" id="registerPassword" placeholder="Пароль" required>
+      <button type="submit">Зарегистрироваться</button>
+    </form>
+  </div>
 
-    <div id="response"></div>
-    <div class="button-container">
-        <a href="/gallery/">Go to Gallery</a>
-    </div>
+  <!-- Форма загрузки изображения -->
+  <form id="uploadForm" enctype="multipart/form-data" style="display:none;">
+    <input type="file" name="file" id="fileInput" accept="image/*" required>
+    <button type="submit">Загрузить</button>
+  </form>
 
-    <script>
-        let token = '';
-        let ip = '';
+  <!-- Предварительный просмотр выбранного изображения -->
+  <div id="previewContainer">
+    <h3>Предварительный просмотр:</h3>
+    <img id="preview" src="#" alt="Нет выбранного изображения" style="display:none;">
+  </div>
 
-        fetch("/config/")
-            .then(response => response.json())
-            .then(data => {
-                ip = `http://${data.server_ip}:8000/upload/`;
-                console.log("Server IP:", ip);
+  <!-- Контейнер для отображения обработанного изображения -->
+  <div id="processedContainer" style="display:none;">
+    <h3>Обработанное изображение:</h3>
+    <img id="processedImage" src="#" alt="Обработанное изображение">
+  </div>
+
+  <div id="response"></div>
+  <div class="button-container">
+    <a href="/gallery/">Перейти в галерею</a>
+  </div>
+
+  <script>
+  let token = '';
+  let uploadUrl = '';
+
+  // Получаем конфигурацию сервера для формирования URL загрузки
+  fetch("/config/")
+    .then(response => response.json())
+    .then(data => {
+      // Формируем URL для загрузки через HTTPS
+      uploadUrl = `https://${data.server_ip}:8000/upload/`;
+      console.log("URL загрузки:", uploadUrl);
+    })
+    .catch(error => console.error("Ошибка получения конфигурации:", error));
+
+  // Обработка формы входа
+  document.getElementById('loginForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const params = new URLSearchParams({ username, password });
+    fetch("/token", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    })
+    .then(response => {
+      if (!response.ok) { throw new Error('Ошибка входа'); }
+      return response.json();
+    })
+    .then(data => {
+      token = data.access_token;
+      document.getElementById('uploadForm').style.display = 'block';
+      alert('Вход выполнен успешно');
+    })
+    .catch(error => { alert('Ошибка входа: ' + error.message); });
+  });
+
+  // Обработка формы регистрации
+  document.getElementById('registerForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const username = document.getElementById('registerUsername').value;
+    const password = document.getElementById('registerPassword').value;
+    fetch("/register/", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    .then(response => {
+      if (!response.ok) { throw new Error('Ошибка регистрации'); }
+      return response.json();
+    })
+    .then(data => { alert('Регистрация успешна'); })
+    .catch(error => { alert('Ошибка регистрации: ' + error.message); });
+  });
+
+  // Обработка загрузки изображения
+  document.getElementById('uploadForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const formData = new FormData();
+    const file = document.getElementById('fileInput').files[0];
+    if (file) {
+      formData.append('file', file);
+      fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) { throw new Error('Ошибка загрузки'); }
+        return response.json();
+      })
+      .then(data => {
+        const filename = data.filename;
+        document.getElementById('response').textContent = `Изображение загружено. Имя файла: ${filename}`;
+        document.getElementById('response').className = 'success';
+
+        // Поллинг для получения обработанного изображения
+        const pollInterval = setInterval(() => {
+          fetch(`/processed_images/${filename}`)
+            .then(resp => {
+              if (!resp.ok) { throw new Error("Обработанное изображение ещё не готово"); }
+              return resp.blob();
             })
-            .catch(error => console.error("Error fetching config:", error));
-
-        document.getElementById('loginForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const username = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-
-            fetch("/token", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `username=${username}&password=${password}`
+            .then(blob => {
+              clearInterval(pollInterval);
+              const processedUrl = URL.createObjectURL(blob);
+              document.getElementById('processedImage').src = processedUrl;
+              document.getElementById('processedContainer').style.display = 'block';
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Login failed');
-                }
-                return response.json();
-            })
-            .then(data => {
-                token = data.access_token;
-                document.getElementById('uploadForm').style.display = 'block';
-                alert('Login successful');
-            })
-            .catch(error => {
-                alert('Login failed: ' + error.message);
-            });
-        });
+            .catch(err => { console.log(err.message); });
+        }, 2000);
+      })
+      .catch(error => {
+        document.getElementById('response').textContent = 'Ошибка загрузки изображения.';
+        document.getElementById('response').className = 'error';
+        console.error('Ошибка:', error);
+      });
+    }
+  });
 
-        document.getElementById('registerForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const username = document.getElementById('registerUsername').value;
-            const password = document.getElementById('registerPassword').value;
-
-            fetch("/register/", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Registration failed');
-                }
-                return response.json();
-            })
-            .then(data => {
-                alert('Registration successful');
-            })
-            .catch(error => {
-                alert('Registration failed: ' + error.message);
-            });
-        });
-
-        document.getElementById('uploadForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const formData = new FormData();
-            const file = document.getElementById('fileInput').files[0];
-
-            if (file) {
-                formData.append('file', file);
-
-                fetch(ip, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    document.getElementById('response').textContent = `${data.message}, Filename: ${data.filename}`;
-                    document.getElementById('response').className = 'success';
-                })
-                .catch(error => {
-                    document.getElementById('response').textContent = 'Error uploading image.';
-                    document.getElementById('response').className = 'error';
-                    console.error('Error:', error);
-                });
-            }
-        });
-
-        document.getElementById('fileInput').addEventListener('change', function () {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    document.getElementById('preview').src = e.target.result;
-                    document.getElementById('preview').style.display = 'block';
-                }
-                reader.readAsDataURL(file);
-            } else {
-                document.getElementById('preview').style.display = 'none';
-            }
-        });
-    </script>
+  // Предварительный просмотр выбранного изображения
+  document.getElementById('fileInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const preview = document.getElementById('preview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+      }
+      reader.readAsDataURL(file);
+    } else {
+      document.getElementById('preview').style.display = 'none';
+    }
+  });
+</script>
 </body>
 </html>
